@@ -15,6 +15,8 @@ using UnityEngine;
 using System;
 using System.Linq;
 using System.Collections;
+using System.Collections.Generic;
+using UnityEngine.UI;
 
 public static class KeyboardC
 {
@@ -29,7 +31,9 @@ public static class KeyboardC
     public static int mouse_x;// => Mathf.Clamp((int)Input.mousePosition.x, 0, vga_width);
     public static int mouse_y;// => Screen.height - Mathf.Clamp((int)Input.mousePosition.y, 0, vga_height);
 
-    private static readonly KeyCode[] SupportedKeys = Enum.GetValues(typeof(KeyCode)).Cast<KeyCode>().Where(e => e < KeyCode.Mouse0).ToArray();     //Mouse0 is the first entry we don't support
+    private static readonly KeyCode[] SupportedKeys = 
+        Enum.GetValues(typeof(KeyCode)).
+            Cast<KeyCode>().Where(e => e < KeyCode.Mouse0).ToArray();     //Mouse0 is the first entry we don't support
     public static bool[] keysactive = new bool[(int)SupportedKeys.Max() + 1];
     public static bool[] keyswereactive = new bool[(int)SupportedKeys.Max() + 1];
 
@@ -161,6 +165,231 @@ public static class KeyboardC
         }
     }
 
+    //When true, tells the game that the joystick is being used
+    private static bool JoyStickIsBeingUsed = false;
+    
+    //A list of keys that need to be returned for input
+    private static readonly List<KeyCode> JoyStickKeysToReturn = new List<KeyCode>();
+
+    /// <summary>
+    /// Tries to get the input from the joystick and returns it as a keyboard input. This is only for
+    /// some inputs that are currently only working for menus
+    /// </summary>
+    /// <returns></returns>
+    private static List<KeyCode> GetButtonInputFromJoysticks()
+    {
+#if UNITY_STANDALONE_WIN
+        
+        //Checking for left trigger being clicked
+        if (Input.GetAxis("Left Trigger Windows") > 0.2f)
+        {
+            //Adding this only if this is already not part of the list
+            if (JoyStickKeysToReturn.Contains(KeyCode.LeftControl) == false)
+            {
+                JoyStickKeysToReturn.Add(KeyCode.LeftControl);
+            }
+        }
+        else
+        {
+            if (JoyStickKeysToReturn.Contains(KeyCode.LeftControl))
+            {
+                JoyStickKeysToReturn.Remove(KeyCode.LeftControl);
+            }
+        }
+            
+        //Checking for right trigger being clicked
+        if (Input.GetAxis("Right Trigger Windows") > 0.2f)
+        {
+            if (JoyStickKeysToReturn.Contains(KeyCode.LeftAlt) == false)
+            {
+                JoyStickKeysToReturn.Add(KeyCode.LeftAlt);
+            }
+        }
+        else
+        {
+            if (JoyStickKeysToReturn.Contains(KeyCode.LeftAlt))
+            {
+                JoyStickKeysToReturn.Remove(KeyCode.LeftAlt);
+            }
+        }
+        
+#endif
+
+#if UNITY_STANDALONE_LINUX
+
+        //Checking for left trigger being clicked
+        if (Input.GetAxis("Left Trigger") > 0.2f)
+        {
+            //Adding this only if this is already not part of the list
+            if (JoyStickKeysToReturn.Contains(KeyCode.LeftControl) == false)
+            {
+                JoyStickKeysToReturn.Add(KeyCode.LeftControl);
+            }
+        }
+        else
+        {
+            if (JoyStickKeysToReturn.Contains(KeyCode.LeftControl))
+            {
+                JoyStickKeysToReturn.Remove(KeyCode.LeftControl);
+            }
+        }
+            
+        //Checking for right trigger being clicked
+        if (Input.GetAxis("Right Trigger") > 0.2f)
+        {
+            if (JoyStickKeysToReturn.Contains(KeyCode.LeftAlt) == false)
+            {
+                JoyStickKeysToReturn.Add(KeyCode.LeftAlt);
+            }
+        }
+        else
+        {
+            if (JoyStickKeysToReturn.Contains(KeyCode.LeftAlt))
+            {
+                JoyStickKeysToReturn.Remove(KeyCode.LeftAlt);
+            }
+        }
+#endif
+
+        //When the 'Y' button is pressed, we will add Return to the list or if the 'A' button is pressed,
+        //we will add Space to the list
+        if (Input.GetButton("Change Fire") || Input.GetButton("Jump"))
+        {
+            if (Input.GetButton("Change Fire"))
+            {
+                if (JoyStickKeysToReturn.Contains(KeyCode.Return) == false)
+                {
+                    JoyStickKeysToReturn.Add(KeyCode.Return);
+                }
+            }
+            
+            //Running this only if change fire was not pressed
+            if (Input.GetButton("Jump"))
+            {
+                if (JoyStickKeysToReturn.Contains(KeyCode.Space) == false)
+                {
+                    JoyStickKeysToReturn.Add(KeyCode.Space);
+                }
+            }
+        }
+        else //Removing both keys from the list if they already exist
+        {
+            if (JoyStickKeysToReturn.Contains(KeyCode.Return))
+            {
+                JoyStickKeysToReturn.Remove(KeyCode.Return);
+            }
+            
+            if (JoyStickKeysToReturn.Contains(KeyCode.Space))
+            {
+                JoyStickKeysToReturn.Remove(KeyCode.Space);
+            }
+        }
+        
+        //When the pause button is clicked, we will add the P key
+        if (Input.GetButtonDown("Pause"))
+        {
+            //Checking if the keycode already exist in the list
+            if (JoyStickKeysToReturn.Contains(KeyCode.P) == false)
+            {
+                JoyStickKeysToReturn.Add(KeyCode.P);
+            }
+        }
+        else
+        {
+            if (JoyStickKeysToReturn.Contains(KeyCode.P))
+            {
+                JoyStickKeysToReturn.Remove(KeyCode.P);
+            }
+        }
+        
+        //When the cancel button is clicked, we want to add the escape key
+        if (Input.GetButton("Cancel"))
+        {
+            //Checking if the keycode already exist in the list
+            if (JoyStickKeysToReturn.Contains(KeyCode.Escape) == false)
+            {
+                JoyStickKeysToReturn.Add(KeyCode.Escape);
+            }
+        }
+        else
+        {
+            if (JoyStickKeysToReturn.Contains(KeyCode.Escape))
+            {
+                JoyStickKeysToReturn.Remove(KeyCode.Escape);
+            }
+        }
+
+        //Checking if the left joystick is going left
+        if (Input.GetAxis("Horizontal") < -0.1f)
+        {
+            //Checking if the keycode already exist in the list
+            if (JoyStickKeysToReturn.Contains(KeyCode.LeftArrow) == false)
+            {
+                JoyStickKeysToReturn.Add(KeyCode.LeftArrow);
+            }
+        }
+        else
+        {
+            if (JoyStickKeysToReturn.Contains(KeyCode.LeftArrow))
+            {
+                JoyStickKeysToReturn.Remove(KeyCode.LeftArrow);
+            }
+        }
+        
+        //Checking if the left joystick is going right
+        if (Input.GetAxis("Horizontal") > 0.1f)
+        {
+            //Checking if the keycode already exist in the list
+            if (JoyStickKeysToReturn.Contains(KeyCode.RightArrow) == false)
+            {
+                JoyStickKeysToReturn.Add(KeyCode.RightArrow);
+            }
+        }
+        else
+        {
+            if (JoyStickKeysToReturn.Contains(KeyCode.RightArrow))
+            {
+                JoyStickKeysToReturn.Remove(KeyCode.RightArrow);
+            }
+        }
+
+        //Checking if the left joystick is going up
+        if (Input.GetAxis("Vertical") > 0.1f)
+        {
+            //Checking if the keycode already exist in the list
+            if (JoyStickKeysToReturn.Contains(KeyCode.UpArrow) == false)
+            {
+                JoyStickKeysToReturn.Add(KeyCode.UpArrow);
+            }
+        }
+        else
+        {
+            if (JoyStickKeysToReturn.Contains(KeyCode.UpArrow))
+            {
+                JoyStickKeysToReturn.Remove(KeyCode.UpArrow);
+            }
+        }
+        
+        //Checking if the left joystick is going down
+        if (Input.GetAxis("Vertical") < -0.1f)
+        {
+            //Checking if the keycode already exist in the list
+            if (JoyStickKeysToReturn.Contains(KeyCode.DownArrow) == false)
+            {
+                JoyStickKeysToReturn.Add(KeyCode.DownArrow);
+            }
+        }
+        else
+        {
+            if (JoyStickKeysToReturn.Contains(KeyCode.DownArrow))
+            {
+                JoyStickKeysToReturn.Remove(KeyCode.DownArrow);
+            }
+        }
+
+        return JoyStickKeysToReturn;
+    }
+    
     public static void service_SDL_events(JE_boolean clear_new)
     {
         if (clear_new)
@@ -207,9 +436,34 @@ public static class KeyboardC
         keydown = false;
         for (int i = 0; i < SupportedKeys.Length; ++i)
         {
-            KeyCode k = SupportedKeys[i];
-            int idx = (int)k;
-            bool active = Input.GetKey(k);
+            //When there is no keycode
+            KeyCode k;
+            int idx;
+            bool active;
+
+            k = SupportedKeys[i];
+            idx = (int)k;
+            active = Input.GetKey(k);
+            
+            //Checking if the joystick array is not equal to null. If it is not equal to zero,
+            //it means that the joystick is being used
+            if (GetButtonInputFromJoysticks().Count != 0)
+            {
+                //Checking if GetButtonInputFromJoysticks() contains k
+                if (GetButtonInputFromJoysticks().Contains(k))
+                {
+                    idx = (int) k;
+                    //If it does, then we set active to true
+                    active = true;
+                }
+                else
+                {
+                    idx = (int) k;
+                    //If it doesn't, then we set active to false, which means that this key was not active
+                    active = false;
+                }
+            }
+
             if (k == KeyCode.Escape && OverrideEscapePress)
             {
                 active = true;
@@ -223,6 +477,7 @@ public static class KeyboardC
                 }
                 newkey = true;
                 lastkey_sym = k;
+                Debug.Log("Last clicked key was " + lastkey_sym);
                 lastkey_char = (char)lastkey_sym;
             }
             if (active && keyswereactive[idx] && !keysactive[idx])
@@ -233,7 +488,6 @@ public static class KeyboardC
             {
                 keydown |= keysactive[idx] = keyswereactive[idx] = active;
             }
-
         }
         ESCPressed = keysactive[(int)KeyCode.Escape];
     }
